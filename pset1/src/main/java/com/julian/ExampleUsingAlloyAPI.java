@@ -24,7 +24,8 @@ import java.util.Map;
 
 public class ExampleUsingAlloyAPI 
 {
-	final static String PATH = "...";
+    //final static String PATH = "..."
+    final static String PATH = "./src/main/java/com/julian/";
 
 	public static void main(String[] args) throws Err 
     {
@@ -76,34 +77,58 @@ public class ExampleUsingAlloyAPI
                                    throws Err 
     {
         int solutions = 0;
-        
-        for (Command command : world.getAllCommands())
+
+        A4Solution solution = TranslateAlloyToKodkod.execute_command(rep, world.getAllReachableSigs(), command, options); 
+
+        do 
         {
-            A4Solution solution = TranslateAlloyToKodkod.execute_command(rep, world.getAllReachableSigs(), command, options);
-            if (solution.satisfiable()) 
-            { 
-                solutions++; 
+            if (solution.satisfiable())
+            {
+                solutions++;
                 allSols.add(solution);
+                solution = solution.next();
             }
         }
+        while (solution.satisfiable());
 
         return solutions;	
 	}
-	
+
+    /**
+     * 
+     * iterate over the sigs and their fields in <sol>
+     * to find field <fieldname> in sig <signame>,
+     * create a map that represents the tuples in the
+     * corresponding relation, return the map
+     * hint: use methods A4Solution.getAllReachableSigs() and
+     * Sig.getFields() to iterate over all sigs and fields in <sol>;
+     * use method A4Solution.eval(f) to get the value of field f in <sol>;
+     * use method A4Tuple.atom(i) to get atom at position i in the tuple
+     */
 	private static Map<String, String> getRelation(A4Solution sol,
-                                                   String signame, 
-                                                   String fieldname) 
+                                                   String sigName, 
+                                                   String fieldName) 
     {
-        // iterate over the sigs and their fields in <sol>
-        // to find field <fieldname> in sig <signame>,
-        // create a map that represents the tuples in the
-        // corresponding relation, return the map
-        // hint: use methods A4Solution.getAllReachableSigs() and
-        // Sig.getFields() to iterate over all sigs and fields in <sol>;
-        // use method A4Solution.eval(f) to get the value of field f in <sol>;
-        // use method A4Tuple.atom(i) to get atom at position i in the tuple
+        //Map<String, String> result = new HashMap<String, String>();
+        //for (Sig sig : sol.getAllReachableSigs())
+        //{
+            //if (!sig.toString().contains(sigName)) { continue; } 
+
+            //for (Sig.Field field : sig.getFields())
+            //{
+                //if (!field.toString().contains(fieldName)) { continue; }
+
+                //for (A4Tuple tuple : sol.eval(field))
+                //{
+                    //for (int i = 0; i < tuple.arity(); i++) {
+                        //System.out.print(tuple.atom(i));
+                        //if (i < tuple.arity() - 1) System.out.print(", ");
+                    //}
+                //}
+            //}
+        //}
         
-        // your code goes here
+        //return result;
         return null;
 	}
 		
