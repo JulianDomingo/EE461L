@@ -17,15 +17,18 @@ import edu.mit.csail.sdg.alloy4compiler.translator.A4Solution;
 import edu.mit.csail.sdg.alloy4compiler.translator.A4Tuple;
 import edu.mit.csail.sdg.alloy4compiler.translator.A4TupleSet;
 import edu.mit.csail.sdg.alloy4compiler.translator.TranslateAlloyToKodkod;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.lang.StringBuilder;
+import java.util.*;
 
 public class ExampleUsingAlloyAPI 
 {
-    //final static String PATH = "..."
-    final static String PATH = "./src/main/java/com/julian/";
+    private static final String CONCRETE = "Concrete";
+    private static final String ABSTRACT = "Abstract";
+    private static final String INTERFACE = "Interface";
+    private static final String OBJECT = "Object";
+
+    final static String PATH = "..."
+    //final static String PATH = "./src/main/java/com/julian/";
 
 	public static void main(String[] args) throws Err 
     {
@@ -62,14 +65,14 @@ public class ExampleUsingAlloyAPI
 	}
 	
     /**
-     * Adds all satisfiable solutions from the world to 'allSols' and
-     * returns the number of satisfiable solutions.
+     * Adds all satisfiable solutions from the world to 'allSols'. 
      *
      * @param rep: the A4Reporter used for execute_command(). 
      * @param world: the world pertaining to the satisfiable solutions.
      * @param options: the options chosen for execute_command(). 
      * @param command: the first command in the world's list of commands.
      * @param allSols: the resultant list of satisfiable solutions to the world.
+     * @return the number of satisfiable solutions. 
      */
 	private static int findAllSols(A4Reporter rep, Module world,
 	                        	   A4Options options, Command command, 
@@ -95,54 +98,186 @@ public class ExampleUsingAlloyAPI
 	}
 
     /**
-     * 
-     * iterate over the sigs and their fields in <sol>
-     * to find field <fieldname> in sig <signame>,
-     * create a map that represents the tuples in the
-     * corresponding relation, return the map
-     * hint: use methods A4Solution.getAllReachableSigs() and
-     * Sig.getFields() to iterate over all sigs and fields in <sol>;
-     * use method A4Solution.eval(f) to get the value of field f in <sol>;
-     * use method A4Tuple.atom(i) to get atom at position i in the tuple
+     * Searches the sigs of the solution for the tuples specified by the
+     * sig name and field name.
+     *
+     * @param solution: The solution to fetch sigs and their fields from.
+     * @param sigName: The name of the sig of interest.
+     * @param fieldName: The name of the field of interest from the sig 'sigName'.
+     * @return a mapping of the tuples in the relation.
      */
-	private static Map<String, String> getRelation(A4Solution sol,
+	private static Map<String, String> getRelation(A4Solution solution,
                                                    String sigName, 
                                                    String fieldName) 
     {
-        //Map<String, String> result = new HashMap<String, String>();
-        //for (Sig sig : sol.getAllReachableSigs())
-        //{
-            //if (!sig.toString().contains(sigName)) { continue; } 
+        Map<String, String> result = new TreeMap<String, String>();
 
-            //for (Sig.Field field : sig.getFields())
-            //{
-                //if (!field.toString().contains(fieldName)) { continue; }
+        for (Sig sig : solution.getAllReachableSigs())
+        {
+            if (!sig.toString().contains(sigName)) { continue; } 
 
-                //for (A4Tuple tuple : sol.eval(field))
-                //{
-                    //for (int i = 0; i < tuple.arity(); i++) {
-                        //System.out.print(tuple.atom(i));
-                        //if (i < tuple.arity() - 1) System.out.print(", ");
-                    //}
-                //}
-            //}
-        //}
-        
-        //return result;
-        return null;
+            for (Sig.Field field : sig.getFields())
+            {
+                if (!field.toString().contains(fieldName)) { continue; }
+    
+                for (A4Tuple tuple : solution.eval(field))
+                {
+                    final String key = tuple.atom(0);
+                    final String value = tuple.atom(1); 
+
+                    result.put(key, value);
+                }
+            }
+        }
+
+        return result;
 	}
-		
-	private static String createProgram(A4Solution sol,
-                                        Map<String, String> supertype,
-                                        Map<String, String> implementS) 
+
+    /**
+     * Returns a string of the resultant Java program from 'solution'.
+     *
+     * @param solution: The solution to fetch edge cases from to add to the resultant string.
+     * @param extend: The mapping of all classes/interfaces extending other classes or interfaces.
+     * @param implement : The mapping of all classes/interfaces implementing interfaces (that aren't itself). 
+     * @return the string output of the resultant Java program.
+     */
+	private static String createProgram(A4Solution solution,
+                                        Map<String, String> extend,
+                                        Map<String, String> implement) 
     {
-        // assume input map <supertype> is already initialized
-        // to represent the value of "ext" relation in <sol>
-        // assume input map <implementS> is already initialized
-        // to represent the value of "impl" relation in <sol>
-        // return the Java program represented by <sol>
-        
-        // your code goes here
-        return null;
+        StringBuilder result = new StringBuilder();
+
+        for (Map.Entry<String, String> entry : extend.entrySet())
+        {
+            StringBuilder sb = new StringBuilder(); 
+
+            switch (getClassType(entry.getKey()))
+            {
+                case CONCRETE:
+                    sb.append("class C" + getClassNumber(entry.getKey()));  
+                    break;
+
+                case ABSTRACT:
+                    sb.append("abstract class A" + getClassNumber(entry.getKey()));
+                    break;
+
+                case INTERFACE:
+                    sb.append("interface I" + getClassNumber(entry.getKey()));
+                    break;
+            }
+            
+            addExtendedClass(sb, entry);
+            addImplementedInterfaces(sb, entry, implement);
+
+            sb.append(" {}\n");
+
+            result.append(sb.toString());
+        }
+
+        // Edge case: handle solutions which don't have 'extends' or 'implements', but
+        // still contain a lone interface. 
+        for (Sig sig : solution.getAllReachableSigs())
+        {
+            if (sig.toString().contains("univ")) 
+            {
+                for (A4Tuple tuple : solution.eval(sig))
+                {
+                    String universeMember = tuple.toString();
+
+                    if (universeMember.contains(OBJECT)) { continue; }
+
+                    switch (getClassType(universeMember))
+                    {
+                        case CONCRETE:
+                            universeMember = "class C"; 
+                            break;
+
+                        case ABSTRACT:
+                            universeMember = "abstract class A"; 
+                            break;
+
+                        case INTERFACE:
+                            universeMember = "interface I";
+                            break;
+                    }
+
+                    universeMember += getClassNumber(tuple.toString());
+
+                    if (!result.toString().contains(universeMember))
+                    {
+                        result.append(universeMember)
+                              .append(" {}")
+                              .append("\n");                        
+                    }
+                }
+            }
+        }
+
+        return result.toString();
 	}
+
+    /**
+     * A helper method returning the appropriate class/interface from 'classType'.
+     *
+     * @param classType: The string used to compare with the global constants in 
+     *                   determining the identity of 'classType'. 
+     * @return the correct identity of 'classType'.
+     * @throws IllegalArgumentException: when 'classType' doesn't fit the identity
+     *                                   of any of the below global constants.
+     */
+    private static String getClassType(String classType)
+    {
+        if (classType.contains(CONCRETE)) { return CONCRETE; }
+        else if (classType.contains(ABSTRACT)) { return ABSTRACT; }
+        else if (classType.contains(INTERFACE)) { return INTERFACE; }
+
+        throw new IllegalArgumentException();
+    }
+
+    /**
+     * A helper method returning the class/interface number of 'mapValue'.
+     *
+     * @param string: The string used to get the class number from. 
+     * @return the substring of the number string value.
+     */
+    private static String getClassNumber(String string) 
+    {
+        return string.substring(string.indexOf('$') + 1, string.length());
+    }
+
+    /**
+     * A helper method to add the implemented interface to the existing StringBuilder.
+     *
+     * @param sb: The StringBuilder object to potentially add implemented interfaces to.
+     * @param entry: The Map.Entry obejct containing the potentially implemented interface.
+     * @param implemented: The Map object containing the mappings of 'implements' relationships.
+     */
+    private static void addImplementedInterfaces(StringBuilder sb, 
+                                                 Map.Entry<String, String> entry, 
+                                                 Map<String, String> implemented)
+    {
+        if (implemented.containsKey(entry.getKey()))
+        {
+            String implementedInterface = implemented.get(entry.getKey());
+
+            sb.append(" implements I").append(getClassNumber(implementedInterface));
+        }
+    }
+
+    /**
+     * A helper method to append the extended class string to the existing StringBuilder. 
+     *
+     * @param sb: The StringBuilder object to potentially add extended classes to.
+     * @param entry: The Map.Entry object containing the potentially extended class.
+     */
+    private static void addExtendedClass(StringBuilder sb, Map.Entry<String, String> entry)
+    {
+        if (!entry.getValue().contains(OBJECT))
+        {
+            sb.append(" extends ")
+              .append(getClassType(entry.getValue()).contains(CONCRETE) ? "C" :
+                      getClassType(entry.getValue()).contains(ABSTRACT) ? "A" : "I")
+              .append(getClassNumber(entry.getValue()));
+        }
+    }
 }

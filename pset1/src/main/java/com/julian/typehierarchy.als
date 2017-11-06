@@ -31,4 +31,4 @@ fact { all c: Class | lone c.ext } -- lone is at most one
 -- hierarchy is acyclic
 fact { all t: Type | t !in t.^ext } -- ^ is transitive closure
 
-run {} for 2
+run {} for 2 
