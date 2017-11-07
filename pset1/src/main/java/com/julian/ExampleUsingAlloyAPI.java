@@ -27,8 +27,7 @@ public class ExampleUsingAlloyAPI
     private static final String INTERFACE = "Interface";
     private static final String OBJECT = "Object";
 
-    final static String PATH = "..."
-    //final static String PATH = "./src/main/java/com/julian/";
+    final static String PATH = "./src/main/java/com/julian/";
 
 	public static void main(String[] args) throws Err 
     {
@@ -87,6 +86,7 @@ public class ExampleUsingAlloyAPI
         {
             if (solution.satisfiable())
             {
+                System.out.println(solution);
                 solutions++;
                 allSols.add(solution);
                 solution = solution.next();
