@@ -58,6 +58,9 @@ public class DisplayColors implements ChangeListener {
 	// WHAT GOES HERE?
 	// You need to make it possible for the app to get the slider values out.
 
+    // Slider "listens" for new values.
+    slider.addChangeListener(this);
+
 	slider.setValue(slider.getMinimum());
 	return slider;
     }
@@ -101,7 +104,8 @@ public class DisplayColors implements ChangeListener {
 	    Color complementaryColor = Color.getHSBColor(complementaryHue, newSaturation, newBrightness);
 	    // WHAT GOES HERE?
 	    // You need to update the two color panels with the appropriate colors
-
+        originalColorPanel.setColor(newColor);     
+        complementaryColorPanel.setColor(complementaryColor);
 	}
     }
 }
